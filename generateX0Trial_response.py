@@ -246,14 +246,14 @@ def generateTrialArray(win, numTrial,positionBlock,num0sBlock,numberOfItems,Fixa
         count += 1
 
 
-    return t1, btime, press, count-1
+    return t1, btime, press, count-1, key
 
 maxdisplay = 20
 numberOfItems = 6
-numberOfTrials = 2
+numberOfTrials = 3
 n_n=25
 refreshRate = 60
-stimDur = 0.2
+stimDur = 0.25
 abortkey = 1
 fixationDur = 1
 # numTrial = 3
@@ -281,14 +281,14 @@ def runBlock(win, numTrialPerBlock,n_n, refreshRate, probInterval, rangeOfInit, 
     win.recordFrameIntervals = True
     for trial in range(0,numTrialPerBlock):
         print('prob: ', probBlock[trial])
-        t1, btime, press, count= generateTrialArray(win, trial,positionBlock,num0sBlock,
+        t1, btime, press, count, key= generateTrialArray(win, trial,positionBlock,num0sBlock,
                                    numberOfItems,fixationDur,stimDur,refreshRate, maxdisplay,port=s, keymap =keymap, abortkey=abortkey)
         win.flip()
         try:
             btime = HexToRt(BytesListToHexList(btime))
         except IndexError:
             pass
-        resp.append((t1, btime, press, count))
+        resp.append((t1, btime, press, count,key))
 
         core.wait(1)
     return positionBlock,probBlock,num0sBlock, initBlock, resp

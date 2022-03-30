@@ -229,13 +229,7 @@ stimDur = 1
 # numTrial = 3
 
 
-# for _ in range(10):
-#     x = binomial(6, 0.44, 20)
-#     x0 = binomial(6, 0.56, 20)
-#
-#     plt.plot(np.cumsum(x-3),color = 'blue')
-#     plt.plot(np.cumsum(x0-3),color ='black')
-# plt.show()
+
 
 win = visual.Window(size=(1920, 1080), units='pix')
 win.recordFrameIntervals = True
