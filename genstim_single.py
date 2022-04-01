@@ -31,16 +31,20 @@ def gen_unitX():
 def save_unitCircle(x,y,linewidth, color,figsize):
     fig, ax = plt.subplots(1, figsize=(figsize, figsize))
     ax.plot(x, y, linewidth=linewidth, color=color)
+    ax.set_xlim(-1.2,1.2)
+    ax.set_ylim(-1.2,1.2)
     ax.axis("off")
-    fig.savefig("output0.png")
+    fig.savefig("stim/output0.png")
     return fig
 
 def save_unitX(x,y,linewidth, color,figsize):
     fig, ax = plt.subplots(1, figsize=(figsize, figsize))
     for i in range(len(x)):
         ax.plot(x[i], y[i], linewidth=linewidth, color=color)
+    ax.set_xlim(-1.2, 1.2)
+    ax.set_ylim(-1.2, 1.2)
     ax.axis("off")
-    fig.savefig("outputX.png")
+    fig.savefig("stim/outputX.png")
     return fig
 
 def png2array(fname):
@@ -58,18 +62,30 @@ def greySwap(gray):
 
 
 x,y = gen_unitCircle()
-fig = save_unitCircle(x=x,y=y,linewidth=20,color='black',figsize=7)
-im = png2array('output0.png')
+fig = save_unitCircle(x=x,y=y,linewidth=11,color='black',figsize=4)
+im = png2array('stim/output0.png')
 g = greySwap(rgb2gray(im))
-im = Image.fromarray(g)
-im.show()
+g[g == np.min(g)] = 0
+
 
 x_X,y_X = gen_unitX()
-fig = save_unitX(x_X,y_X,linewidth=20,color='black',figsize=7)
-imX = png2array('outputX.png')
+fig = save_unitX(x_X,y_X,linewidth=11,color='black',figsize=4)
+imX = png2array('stim/outputX.png')
 gX = greySwap(rgb2gray(imX))
+gX[gX == np.min(gX)] = 0
+g = g*0.9
+gX = gX*0.9
 imX = Image.fromarray(gX)
 imX.show()
+
+
+g_ = g * np.sum(gX)/ np.sum(g)
+im_ = Image.fromarray(g_)
+im_.show()
+
+im_.convert('RGB').save('stim/output0.png')
+
+imX.convert('RGB').save('stim/outputX.png')
 
 # convert RGB to greyscale
 
