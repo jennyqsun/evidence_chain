@@ -124,15 +124,21 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
                     return count, t1, key, press, btime, stimDur, sequence
         count +=1
         if count == len(sequence):
-            win.flip()
-            endTrial = True
-            t1 = timer.getTime()
-    core.wait(1)
+            while endTrial is False:
+                win.flip()
+                k = port.in_waiting
+                if k != 0:
+                    t1 = timer.getTime()
+                    keylist.append(port.read(port.in_waiting))
+                    key, press, btime = readoutput([keylist[-1]], keymap)
+                    if press[0] == 1:
+                        endTrial = True
+                        core.wait(1)
     return count,t1,key,press,btime,stimDur,sequence
 
 def winThreshold(win):
     win.recordFrameIntervals = True
-    win.refreshThreshold = 1 / 60 + 0.003
+    win.refreshThreshold = 1 / 60 + 0.005
     logging.console.setLevel(logging.WARNING)
     return win
 
@@ -191,9 +197,9 @@ def break_wait(win):
 
 
 subj = input('############')
-trialPerBlock = 30
+trialPerBlock = 2
 if trialPerBlock % 2 != 0:
-    print('error: even trials')
+    print('!!! error: please input even trials')
 numTrial = int(trialPerBlock/2)
 
 #
@@ -203,12 +209,15 @@ df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 df.to_csv('data/'+ subj + '_block_0' + '.csv', index= False)
 win = break_wait(win)
+win = winThreshold(win)
 
 resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 df.to_csv('data/'+ subj+ '_block_1' + '.csv', index= False)
 win = break_wait(win)
+win = winThreshold(win)
+
 
 resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.08, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
