@@ -73,8 +73,8 @@ fig = save_unitX(x_X,y_X,linewidth=11,color='black',figsize=4)
 imX = png2array('stim/outputX.png')
 gX = greySwap(rgb2gray(imX))
 gX[gX == np.min(gX)] = 0
-g = g*0.9
-gX = gX*0.9
+g = g*0.5
+gX = gX*0.5
 imX = Image.fromarray(gX)
 imX.show()
 

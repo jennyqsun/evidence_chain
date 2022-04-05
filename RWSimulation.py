@@ -53,7 +53,7 @@ def genUnbiasedSets(nset):
     return UnbiasedSet
 
 # start simulation
-X0,X1 = simulateTrials(6,30,1,0.06,[0,4,8])
+X0,X1 = simulateTrials(6,60,1,0.07,[0,4,8])
 X0[X0==0]= -1
 X1[X1==0] = -1
 X0[X0==0.5]= 0

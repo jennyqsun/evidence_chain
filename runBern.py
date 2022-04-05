@@ -5,7 +5,8 @@ from numpy.random import binomial, uniform
 import numpy as np
 import random
 import pandas as pd
-
+import csv
+import pickle
 import matplotlib.pyplot as plt
 
 try:
@@ -22,6 +23,19 @@ try:
 except:
     print('cant find response pad. Exiting now')
     sys.exit()
+
+
+
+
+
+def generateIntro(win):
+    intro = TextStim(win, text = 'Press RIGHT key if there are more Os \n Press LEFT key if there are more Xs\n\n Press any key on keypad to start', color='white', pos = (0,0))
+    return intro
+
+
+def generateBreak(win):
+    breakPage = TextStim(win, text = 'Break Time. \n Press any key to start.', color='white', pos = (0,0))
+    return breakPage
 
 
 def simulateTrials(numTrials: int, numSteps: int, numStim: int, Bias: float, initRange:range):
@@ -52,7 +66,7 @@ def simulateTrials(numTrials: int, numSteps: int, numStim: int, Bias: float, ini
 
 def randomizeTrials(X0,X1):
     trialTotal = len(X0) + len(X1)
-    randlist = np.arange(0,100)
+    randlist = np.arange(0,int(trialTotal))
     allTrials = np.vstack((X0,X1))
     random.shuffle(randlist)
     allTrials = allTrials[randlist,:]
@@ -72,6 +86,7 @@ def genVisualStim(win,size,pos):
 
 
 def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keymap=keymap,abortkey=7):
+    timer = core.Clock()
     keylist=[]
     sequence = allTrials[trialIndex]
     fix = generateFixationCross(win)
@@ -88,7 +103,7 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
     clear_buffer(port)
     reset_timer(port)
     while endTrial is False:
-        stim = img0 if sequence[count]==-1 else imgX
+        stim = img0 if sequence[count]==1 else imgX    # if 1 show 0s, if -1 show X
         for f in range(int(refreshRate*stimDur)):
             stim.draw()
             win.flip()
@@ -105,14 +120,14 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
                 if press[0] ==1:
                     endTrial = True
                     core.wait(1)
-                    return count, t1, key, press, btime
+                    return count, t1, key, press, btime, stimDur, sequence
         count +=1
         if count == len(sequence):
             win.flip()
             endTrial = True
             t1 = timer.getTime()
     core.wait(1)
-    return count,t1,key,press,btime
+    return count,t1,key,press,btime,stimDur,sequence
 
 def winThreshold(win):
     win.recordFrameIntervals = True
@@ -120,24 +135,146 @@ def winThreshold(win):
     logging.console.setLevel(logging.WARNING)
     return win
 
+def clear_reset_port(port):
+    clear_buffer(port)
+    reset_timer(port)
 
-win = visual.Window(size=(1920, 1080), units='pix',color='black')
-win = winThreshold(win)
-X0,X1,initSteps = simulateTrials(numTrials=50,numSteps=60,numStim=1,Bias=0.08,initRange = [0,4,8])
-img0,imgX = genVisualStim(win,120,(0,0))
-allTrials = randomizeTrials(X0,X1)
-timer = core.Clock()
+# set up experiment
 
-resp =[]
-for t in range(0,5):
-    count,t1,key,press,btime = runTrial(allTrials= allTrials,img0=img0,imgX=imgX,win=win,stimDur=0.1,trialIndex=t,refreshRate=60)
-    try:
-        btime = HexToRt(BytesListToHexList(btime))
-    except IndexError:
-        pass
-    resp.append((t1, btime, press, count, key))
-    print(t1,btime,count)
-    print('Overall, %i frames were dropped.' % win.nDroppedFrames)
+def beginExp(port,numTrials,numSteps,numStim,Bias,initRange, newWin=True, win=None):
+    if newWin is True:
+        win = visual.Window(size=(1920, 1080), units='pix',color='black')
+        win = winThreshold(win)
+        intro = generateIntro(win)
+        intro.draw()
+        win.flip()
+        clear_reset_port(port)
+        resp = False
+        while resp is False:
+            k = port.in_waiting
+            if k != 0:
+                resp = True
+    else:
+        win = win
+    X0,X1,initSteps = simulateTrials(numTrials=numTrials,numSteps=numSteps,numStim=numStim,Bias=Bias,initRange = initRange)
+    img0,imgX = genVisualStim(win,120,(0,0))
+    allTrials = randomizeTrials(X0,X1)
+    return win, allTrials, img0, imgX, X0,X1
+
+
+def runBlock(port,numTrials,numSteps,numStim,Bias,initRange, stimDur, refreshRate=60, newWin = True, win=None):
+    win,allTrials,img0,imgX, X0,X1 = beginExp(port=port,numTrials=numTrials,numSteps=numSteps,numStim=numStim,Bias=Bias,initRange = initRange, newWin=newWin, win=win)
+    resp =[]
+    for t in range(0,len(allTrials)):
+        count,t1,key,press,btime, stimDur, sequence = runTrial(allTrials= allTrials,img0=img0,imgX=imgX,win=win,stimDur=stimDur,trialIndex=t,refreshRate=refreshRate)
+        try:
+            btime = HexToRt(BytesListToHexList(btime))
+        except IndexError:
+            pass
+        resp.append((t1, btime, press, count, key, stimDur, Bias, sequence))
+        print(t1,btime,count)
+        print('Overall, %i frames were dropped.' % win.nDroppedFrames)
+    return resp, allTrials,X0,X1, win
+
+def break_wait(win):
+    breakPage = generateBreak(win)
+    breakPage.draw()
+    win.flip()
+    clear_reset_port(s)
+    resp = False
+    while resp is False:
+        k = s.in_waiting
+        if k != 0:
+            resp = True
+    return win
+
+
+subj = input('############')
+trialPerBlock = 30
+if trialPerBlock % 2 != 0:
+    print('error: even trials')
+numTrial = int(trialPerBlock/2)
+
+#
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.05, refreshRate=60, newWin=True)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_0' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj+ '_block_1' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.08, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+subj+ '_block_2' + '.csv', index= False)
+win = break_wait(win)
+
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+subj+ '_block_3' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+subj+ '_block_4' + '.csv', index= False)
+win = break_wait(win)
+
+
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.08, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_5' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_6' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.05, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_7' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_8' + '.csv', index= False)
+win = break_wait(win)
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+df.to_csv('data/'+ subj + '_block_9' + '.csv', index= False)
+
+
+win.close()
+
+#
+# breakPage = generateBreak(win)
+# breakPage.draw()
+# win.flip()
+# clear_reset_port(s)
+# resp = False
+# while resp is False:
+#     k = s.in_waiting
+#     if k != 0:
+#         resp = True
+
+
+
 
 # check the randomwalk
 fig, ax = plt.subplots(2,1, figsize = (10,12))
@@ -152,12 +289,40 @@ ax[1].set_title('Correlation Coefficients')
 fig.show()
 
 
-# check the randomwalk
-fig, ax = plt.subplots(2,1, figsize = (10,12))
-Lines0 = ax[0].plot(np.cumsum(allTrials[0:5], axis=1).T)
-# ax[0].legend([Lines0[0]])
+# # check the randomwalk
+# fig, ax = plt.subplots(2,1, figsize = (10,12))
+# Lines0 = ax[0].plot(np.cumsum(allTrials[0:5], axis=1).T)
+# # ax[0].legend([Lines0[0]])
+#
+# # check the correlation variance
+# ax[1].hist(np.corrcoef(allTrials[0:5,:])[~np.eye(5,5,dtype='bool')].flatten(), color = 'blue',alpha=0.8)
+# ax[1].set_title('Correlation Coefficients')
+# fig.show()
 
-# check the correlation variance
-ax[1].hist(np.corrcoef(allTrials[0:5,:])[~np.eye(5,5,dtype='bool')].flatten(), color = 'blue',alpha=0.8)
-ax[1].set_title('Correlation Coefficients')
-fig.show()
+for index, row in df.iterrows():
+    trial_count = row['count']
+    print(trial_count)
+    key = 'O' if row['key'] == [5] else 'X'
+    linecolor = 'red' if key == 'O' else 'black'
+    plt.plot(np.cumsum(row['sequence'][0:trial_count-3]), color = linecolor)
+plt.title('red: 0, black: X')
+plt.show()
+
+key =[]
+for i in df['key']:
+    if len(i)>0:
+        key.append(i[0])
+    else:
+        key.append(0)
+
+l = [True if i==2 else False for i in key]
+seq = []
+for index, row in df[l].iterrows():
+    ratio0 = (sum(row['sequence'][0:row['count'] - 3] == 1)/ len(row['sequence'][0:row['count'] - 3]))
+    # if ratio0>0.5:
+    #     print(ratio0)
+    plt.plot(np.cumsum(row['sequence'][0:row['count']-3]))
+
+plt.show()
+
+# block 50 trials 0.05, 50 trials of 0.08, 50 trials of 0.1
