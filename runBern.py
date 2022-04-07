@@ -279,7 +279,7 @@ win = winThreshold(win)
 
 
 
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=13,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
@@ -297,7 +297,7 @@ win = break_wait(win)
 win = winThreshold(win)
 
 #
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=13,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
@@ -315,7 +315,7 @@ win = winThreshold(win)
 #
 #
 #
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=13,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
@@ -331,7 +331,7 @@ df.to_csv('data/'+ subj + '_block_6' + '.csv', index= False)
 win = break_wait(win)
 win = winThreshold(win)
 #
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=13,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
 trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
