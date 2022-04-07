@@ -76,7 +76,7 @@ def randomizeTrials(X0,X1):
 
 
 def generateFixationCross(win):
-    fixation = TextStim(win, text = '+', color='white', pos = (0,0))
+    fixation = TextStim(win, text = '+', color='white', pos = (0,0), opacity = 0.8)
     fixation.height = 50
     return fixation
 
@@ -85,8 +85,25 @@ def genVisualStim(win,size,pos):
     imgX = visual.ImageStim(win=win, image='stim/outputX.png', units="pix", size=size, pos=pos)
     return img0, imgX
 
+def genPos(direction, distance):
+    pos0 = (0,distance)
+    pos1 = (distance,0)
+    pos2 = (0,-distance)
+    pos3 = (-distance,0)
+    if direction == 'clock':
+        pos = (pos0,pos1,pos2,pos3)
+    else:
+        pos = (pos0, pos1, pos2, pos3)
+        pos = pos[::-1]
+    return (pos0,pos1,pos2,pos3)
 
-def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keymap=keymap,abortkey=7):
+def stackPos(numSteps, direction, distance):
+    posVec = genPos('clock', distance)
+    repeats = np.ceil(numSteps/len(posVec))
+    posAll = posVec * int(repeats)
+    return posAll
+
+def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,posAll,port=s,keymap=keymap,abortkey=7):
     timer = core.Clock()
     keylist=[]
     sequence = allTrials[trialIndex]
@@ -96,6 +113,7 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
     key =[]
     press=[]
     btime=[]
+    t1=[]
 
     for f in range(int(0.5*refreshRate)):
         fix.draw()
@@ -106,7 +124,9 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
     while endTrial is False:
         stim = img0 if sequence[count]==1 else imgX    # if 1 show 0s, if -1 show X
         for f in range(int(refreshRate*stimDur)):
+            stim.pos = posAll[count]
             stim.draw()
+            fix.draw()
             win.flip()
             k = port.in_waiting
             if k != 0:
@@ -123,18 +143,45 @@ def runTrial(allTrials,img0,imgX,win,stimDur,trialIndex, refreshRate,port=s,keym
                     core.wait(1)
                     return count, t1, key, press, btime, stimDur, sequence
         count +=1
+        # if count == len(sequence):
+        #     while endTrial is False:
+        #         win.flip()
+        #         k = port.in_waiting
+        #         if k != 0:
+        #             t1 = timer.getTime()
+        #             keylist.append(port.read(port.in_waiting))
+        #             key, press, btime = readoutput([keylist[-1]], keymap)
+        #             if press[0] == 1:
+        #                 endTrial = True
+        #                 core.wait(1)
         if count == len(sequence):
-            while endTrial is False:
+            endTrial = True
+            for _ in range(int(0.5*refreshRate)):
                 win.flip()
                 k = port.in_waiting
                 if k != 0:
                     t1 = timer.getTime()
                     keylist.append(port.read(port.in_waiting))
-                    key, press, btime = readoutput([keylist[-1]], keymap)
-                    if press[0] == 1:
-                        endTrial = True
-                        core.wait(1)
+                    key, press, btime = readoutput(keylist, keymap)
+                    nonzeroInd = next((i for i, x in enumerate(press) if x), None)
+                    key = [key[nonzeroInd]]
+                    press = [press[nonzeroInd]]
+                    btime = [btime[nonzeroInd]]
+
+            core.wait(0.5)
+
     return count,t1,key,press,btime,stimDur,sequence
+
+# def getStopChain(count, key, press, sequence, stimDur, ndt=0.2)
+#
+# def accCalculator(count, key, press, sequence, stimDur, ndt=0.2):
+#     chain = sequence[0:count+1]
+#     backCount = int(np.round(ndt/stimDur))
+#     if len(chain)==1:
+#     chain = chain[:-backCount]
+#
+#     return chain
+
 
 def winThreshold(win):
     win.recordFrameIntervals = True
@@ -164,16 +211,17 @@ def beginExp(port,numTrials,numSteps,numStim,Bias,initRange, newWin=True, win=No
     else:
         win = win
     X0,X1,initSteps = simulateTrials(numTrials=numTrials,numSteps=numSteps,numStim=numStim,Bias=Bias,initRange = initRange)
-    img0,imgX = genVisualStim(win,120,(0,0))
+    img0,imgX = genVisualStim(win,61,(0,0))
     allTrials = randomizeTrials(X0,X1)
     return win, allTrials, img0, imgX, X0,X1
 
 
-def runBlock(port,numTrials,numSteps,numStim,Bias,initRange, stimDur, refreshRate=60, newWin = True, win=None):
+def runBlock(port,numTrials,numSteps,numStim,Bias,initRange, stimDur, refreshRate=60, newWin = True, win=None, direction='clock', distance=0.5):
     win,allTrials,img0,imgX, X0,X1 = beginExp(port=port,numTrials=numTrials,numSteps=numSteps,numStim=numStim,Bias=Bias,initRange = initRange, newWin=newWin, win=win)
+    posAll = stackPos(numSteps, direction='clock',distance= 45)
     resp =[]
     for t in range(0,len(allTrials)):
-        count,t1,key,press,btime, stimDur, sequence = runTrial(allTrials= allTrials,img0=img0,imgX=imgX,win=win,stimDur=stimDur,trialIndex=t,refreshRate=refreshRate)
+        count,t1,key,press,btime, stimDur, sequence = runTrial(allTrials= allTrials,img0=img0,imgX=imgX,win=win,stimDur=stimDur,trialIndex=t,refreshRate=refreshRate, posAll=posAll)
         try:
             btime = HexToRt(BytesListToHexList(btime))
         except IndexError:
@@ -195,81 +243,103 @@ def break_wait(win):
             resp = True
     return win
 
+def savePKL(array, filename):
+    fileObject = open(filename, 'wb')
+    pickle.dump(array, fileObject)
+    fileObject.close()
+    return filename
 
+def loadPKL(filename):
+    myfile = open(filename, 'rb')
+    f = pickle.load(myfile)
+    return f
+
+
+
+###########################################################
 subj = input('############')
-trialPerBlock = 2
+trialPerBlock = 50
+numSteps = 30
 if trialPerBlock % 2 != 0:
     print('!!! error: please input even trials')
 numTrial = int(trialPerBlock/2)
 
 #
 
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.05, refreshRate=60, newWin=True)
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.1, refreshRate=60, newWin=True)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_0' + '_chains')
 df.to_csv('data/'+ subj + '_block_0' + '.csv', index= False)
 win = break_wait(win)
 win = winThreshold(win)
 
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
+
+
+
+
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+ subj+ '_block_1' + '.csv', index= False)
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
+df.to_csv('data/'+ subj + '_block_1' + '.csv', index= False)
+win = break_wait(win)
+win = winThreshold(win)
+#
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
+df = pd.DataFrame(resp)
+df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
+df.to_csv('data/'+ subj + '_block_2' + '.csv', index= False)
 win = break_wait(win)
 win = winThreshold(win)
 
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.08, refreshRate=60, newWin=False, win=win)
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+subj+ '_block_2' + '.csv', index= False)
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
+df.to_csv('data/'+ subj + '_block_3' + '.csv', index= False)
 win = break_wait(win)
-
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
+win = winThreshold(win)
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+subj+ '_block_3' + '.csv', index= False)
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
+df.to_csv('data/'+ subj + '_block_4' + '.csv', index= False)
 win = break_wait(win)
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
+win = winThreshold(win)
+#
+#
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+subj+ '_block_4' + '.csv', index= False)
-win = break_wait(win)
-
-
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.08, refreshRate=60, newWin=False, win=win)
-df = pd.DataFrame(resp)
-df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
 df.to_csv('data/'+ subj + '_block_5' + '.csv', index= False)
 win = break_wait(win)
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.1, refreshRate=60, newWin=False, win=win)
+win = winThreshold(win)
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
 df.to_csv('data/'+ subj + '_block_6' + '.csv', index= False)
 win = break_wait(win)
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.05, refreshRate=60, newWin=False, win=win)
+win = winThreshold(win)
+#
+resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=25,numSteps=numSteps,numStim=1,Bias=0.12,initRange = [0,0,0], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
 df = pd.DataFrame(resp)
 df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
+trialFile = savePKL(allTrials, filename='data/'+ subj + '_block_1' + '_chains')
 df.to_csv('data/'+ subj + '_block_7' + '.csv', index= False)
 win = break_wait(win)
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.5, refreshRate=60, newWin=False, win=win)
-df = pd.DataFrame(resp)
-df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+ subj + '_block_8' + '.csv', index= False)
-win = break_wait(win)
-
-resp, allTrials,X0,X1, win = runBlock(port=s,numTrials=numTrial,numSteps=60,numStim=1,Bias=0.06,initRange = [0,4,8], stimDur= 0.2, refreshRate=60, newWin=False, win=win)
-df = pd.DataFrame(resp)
-df.columns = ['time','bytetime','press','count','key','stimDur','Bias','sequence']
-df.to_csv('data/'+ subj + '_block_9' + '.csv', index= False)
-
-
+win = winThreshold(win)
+#
+#
 win.close()
 
 #
@@ -320,6 +390,8 @@ plt.show()
 
 key =[]
 for i in df['key']:
+    if isinstance(i, int):
+        i = [i]
     if len(i)>0:
         key.append(i[0])
     else:
