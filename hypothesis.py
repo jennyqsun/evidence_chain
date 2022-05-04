@@ -9,7 +9,7 @@ plt.rcParams.update({'font.size': 17})
 seed=86693
 random.seed(seed)
 np.random.seed(seed)
-
+save= False
 
 def simulateTrials(numTrials: int, numSteps: int, numStim: int, Bias: float, initRange:range):
     X0 = np.zeros((numTrials, numSteps))
@@ -39,7 +39,7 @@ def simulateTrials(numTrials: int, numSteps: int, numStim: int, Bias: float, ini
 
 # DDM
 import seaborn as sns
-X0,X1,initSteps = simulateTrials(200, 30, 1,0.12, [0,0,0])
+X0,X1,initSteps = simulateTrials(1000, 30, 1,0.12, [0,0,0])
 
 cumsum_O = np.cumsum(X0,axis=1)
 cumsum_X = np.cumsum(X1,axis=1)
@@ -47,7 +47,7 @@ cumsum_X = np.cumsum(X1,axis=1)
 
 fig, ax = plt.subplots(1,3,figsize= (15,5))
 
-bound = 6
+bound = 3
 
 cumsum = np.vstack((cumsum_O,cumsum_X))
 indlist =[]
@@ -78,7 +78,8 @@ ax[2].set_xlabel('RT (s)')
 ax[2].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to DDM')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_DDM.png')
+if save:
+    fig.savefig('hypothesis/sim_DDM.png')
 fig.show()
 
 
@@ -114,8 +115,6 @@ for i,j in enumerate(cumsum):
         ax[0].plot(j[0:ind + 1])
 ax[0].plot(alpha,color='red')
 ax[0].plot(-alpha,color='red',label='boundary')
-fig.show()
-
 ax[0].set_xlabel('Number of Steps')
 
 rt = [(i-1)*0.2+np.random.normal(0.3,0.1) for i in indlist]
@@ -129,7 +128,8 @@ ax[2].set_xlabel('RT (s)')
 ax[2].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to cDDM')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_cDDM.png')
+if save:
+    fig.savefig('hypothesis/sim_cDDM.png')
 fig.show()
 
 
@@ -186,7 +186,8 @@ ax[3].set_xlabel('RT (s)')
 ax[3].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to DDM with Urgency Signal (Slope: 0.4)')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_DDM_urgency.png')
+if save:
+    fig.savefig('hypothesis/sim_DDM_urgency.png')
 fig.show()
 
 
@@ -250,7 +251,8 @@ ax[3].set_xlabel('RT (s)')
 ax[3].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to UGM with Low Pass Filter (Slope: 0.4)')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_UGM.png')
+if save:
+    fig.savefig('hypothesis/sim_UGM.png')
 fig.show()
 
 
@@ -308,7 +310,8 @@ ax[2].set_xlabel('RT (s)')
 ax[2].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to Race Model Counting to 6')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_RM.png')
+if save:
+    fig.savefig('hypothesis/sim_RM.png')
 fig.show()
 
 
@@ -368,7 +371,8 @@ ax[2].set_xlabel('RT (s)')
 ax[2].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to Race Model Counting to 6')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_R.png')
+if save:
+    fig.savefig('hypothesis/sim_R.png')
 fig.show()
 
 
@@ -431,8 +435,11 @@ ax[2].set_xlabel('RT (s)')
 ax[2].set_title('Simulated Histogram of RT')
 fig.suptitle('Predicted Patterns according to Consecutive Run Model (run: 4)')
 fig.tight_layout()
-fig.savefig('hypothesis/sim_CRM.png')
+if save:
+    fig.savefig('hypothesis/sim_CRM.png')
 fig.show()
+
+
 
 
 
